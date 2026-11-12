@@ -30,6 +30,11 @@ html,body{height:100%}
 #qr{background:#fff;padding:8px;border-radius:6px;line-height:0}
 #joinUrl{font-family:var(--display);font-size:11px;font-weight:700;color:var(--gold);word-break:break-all}
 #board li.you{color:var(--gold)}
+#start label.check{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--fg)}
+#start label.check input{width:22px;height:22px;padding:0;flex:none;accent-color:var(--gold)}
+.binfo{font-family:var(--display);font-weight:700;color:var(--gold);font-size:15px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.chips button{font-family:var(--body);font-weight:600;letter-spacing:0;font-size:14px;padding:8px 12px;border-color:var(--line);box-shadow:none}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);overflow:hidden;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 #c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
@@ -119,15 +124,20 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
       <button id="bell" type="button">🔔 RING I KLOCKAN</button>
       <button id="rush" type="button">⚡ SÄLJRUSH</button>
       <button id="snd" type="button" aria-label="Ljud av eller på">🔊</button>
+      <button id="setBudget" type="button" hidden>⚙️ BUDGET OCH BOTAR</button>
     </div>
     <div id="hint">Exempeldata · Klicka på en byggnad för att stänga affären · dra för att rotera · scrolla för zoom · mellanslag = ring i klockan</div>
   </div>
 </div>
 <div id="start"><div class="panel">
   <h1>NEON SALES CITY</h1>
-  <p>Tryck på byggnaderna för att stänga affärer och skjuta ner budget-bossen. Slå botarna i topplistan.</p>
+  <p id="startText">Tryck på byggnaderna för att stänga affärer och skjuta ner budget-bossen. Slå botarna i topplistan.</p>
+  <div id="budgetInfo" class="binfo" role="status"></div>
   <form id="startForm">
-    <label for="nick">Smeknamn (sparas bara i din webbläsare)<input id="nick" maxlength="14" autocomplete="off" placeholder="Du"></label>
+    <label for="nick" id="nickRow">Smeknamn (sparas bara i din webbläsare)<input id="nick" maxlength="14" autocomplete="off" placeholder="Du"></label>
+    <label for="budgetIn" id="budgetRow" hidden>Budget att slå, i kronor<input id="budgetIn" inputmode="numeric" autocomplete="off" placeholder="10 000 000"></label>
+    <div class="chips" id="bchips" hidden><button type="button" data-v="1000000">1 Mkr</button><button type="button" data-v="5000000">5 Mkr</button><button type="button" data-v="10000000">10 Mkr</button><button type="button" data-v="25000000">25 Mkr</button></div>
+    <label for="botsIn" id="botsRow" class="check" hidden><input type="checkbox" id="botsIn" checked>Botar som säljer av sig själva</label>
     <button id="go" type="submit">SPELA</button>
   </form>
 </div></div>
@@ -160,7 +170,8 @@ var BOTS=SELLERS.slice();
 var cleanNick=function(v){return String(v||'').replace(/[<>&"'`\\]/g,'').replace(/\s+/g,' ').trim().slice(0,14);};
 var savedNick='';try{savedNick=cleanNick(sessionStorage.getItem('nsc_nick'));}catch(e){}
 var YOU={name:savedNick||'Du',color:'#ffffff',sum:0,deals:0,you:true};
-SELLERS.push(YOU);
+var PRESENT=/presentation/i.test(location.hash);
+if(!PRESENT)SELLERS.push(YOU);
 var STAGES=[
   {name:'Prospekt',color:0x2f7bff,css:'#2f7bff',h:.25},
   {name:'Möte',color:0xb44dff,css:'#b44dff',h:.5},
@@ -175,7 +186,9 @@ function newDeal(){return{company:pick(NA)+' '+pick(NB),value:Math.round(60+Math
 var level=1,budget=10e6,quarterSold=0,totalDeals=0,bossAlive=true,celebrate=0,fwAcc=0;
 var simT=0,simAcc=0,speed=1,rushT=0,STEP=1.6,shake=0,bossHit=0,combo=0,lastClose=0,hudDirty=true,bumpSeller=null;
 var feed=[];
-var started=false,lvlStart=0;
+var started=false,lvlStart=0,baseBudget=10e6;
+var botsOn=!/[?&]bots=0(?:&|$)/.test(location.search);
+(function(){var m=/[?&]b=(\d{4,10})(?:&|$)/.exec(location.search);if(m){var v=parseInt(m[1],10);if(v>=10000&&v<=1e9)baseBudget=v;}})();
 
 /* ---------- Three setup ---------- */
 var canvas=$('c'),renderer;
@@ -288,7 +301,7 @@ function renderHUD(){
   $('soldTxt').textContent='Sålt '+fmtM(quarterSold)+' av budget '+fmtM(budget);
   $('dealsTxt').textContent=totalDeals+' stängda affärer';
   $('lvl').textContent=quarterName();
-  var sorted=SELLERS.slice().sort(function(a,b){return b.sum-a.sum});
+  var sorted=SELLERS.filter(function(s){return botsOn||PRESENT||s.you}).sort(function(a,b){return b.sum-a.sum});
   $('board').innerHTML=sorted.map(function(s,i){return '<li class="'+(s===bumpSeller?'bump ':'')+(s.you?'you':'')+'"><span class="rk">'+(i+1)+'</span><span class="dot" style="background:'+s.color+';color:'+s.color+'"></span><span class="nm">'+(i===0?'👑 ':'')+(s.you?'⭐ ':'')+s.name+'</span><span class="sm">'+fmtM(s.sum)+'</span><span class="dl">'+s.deals+' affärer</span></li>';}).join('');
   bumpSeller=null;
   var cnt=[0,0,0],sum=[0,0,0];B.forEach(function(b){var s=b.deal.stage;if(s<3){cnt[s]++;sum[s]+=b.deal.value;}});
@@ -317,16 +330,16 @@ function closeDeal(b){
 }
 function advance(b){if(b.deal.stage>=2){closeDeal(b);return;}b.deal.stage++;applyStage(b);emit(b.mesh.position.x,b.targetH,b.mesh.position.z,STAGES[b.deal.stage].css,26,9);hudDirty=true;}
 function stepSim(){if(!bossAlive)return;var open=B.filter(function(b){return b.deal.stage<3});if(open.length)advance(pick(open));}
-function bell(){if(!started)return;var open=B.filter(function(b){return b.deal.stage<3}).sort(function(a,b){return (b.deal.stage-a.deal.stage)||(b.deal.value-a.deal.value)});if(open.length){open[0].deal.seller=YOU;closeDeal(open[0]);}}
+function bell(){if(!started)return;var open=B.filter(function(b){return b.deal.stage<3}).sort(function(a,b){return (b.deal.stage-a.deal.stage)||(b.deal.value-a.deal.value)});if(open.length){if(!PRESENT)open[0].deal.seller=YOU;closeDeal(open[0]);}}
 function rush(){if(!started)return;rushT=8;speed=10;$('rush').classList.add('on');}
 function bossDie(){
   bossAlive=false;celebrate=7;boss.visible=false;shake=4;
   emit(boss.position.x,boss.position.y,boss.position.z,'#ff2e5b',700,70);emit(boss.position.x,boss.position.y,boss.position.z,'#ffd23d',500,50);
-  var mvp=SELLERS.slice().sort(function(a,b){return b.sum-a.sum})[0];
+  var mvp=SELLERS.filter(function(s){return botsOn||PRESENT||s.you}).sort(function(a,b){return b.sum-a.sum})[0]||SELLERS[0];
   $('winSub').textContent=quarterName().split(' · ')[0]+' klart på '+Math.round((performance.now()-lvlStart)/1000)+' s · '+fmtM(quarterSold)+' sålt · MVP: '+mvp.name;
   $('win').classList.add('show');sfxWin();
 }
-function nextLevel(){lvlStart=performance.now();level++;budget=Math.round(budget*1.3/1e5)*1e5;quarterSold=0;bossBase*=1.12;boss.visible=true;bossAlive=true;$('win').classList.remove('show');hudDirty=true;
+function nextLevel(){lvlStart=performance.now();level++;budget=calcBudget();quarterSold=0;bossBase*=1.12;boss.visible=true;bossAlive=true;$('win').classList.remove('show');hudDirty=true;
   toast('<div class="t1">NIVÅ '+level+'</div><div class="t2">Ny budget-boss: '+fmtM(budget)+'</div>');}
 
 /* ---------- Input ---------- */
@@ -337,7 +350,7 @@ function showTip(b,x,y){var tip=$('tip');if(!b){tip.classList.remove('show');ret
   tip.style.left=Math.max(8,Math.min(W()-210,x+16))+'px';tip.style.top=Math.max(8,y-84)+'px';tip.classList.add('show');}
 canvas.addEventListener('pointerdown',function(e){audio();dragging=true;moved=0;lx=e.clientX;ly=e.clientY;canvas.style.cursor='grabbing';try{canvas.setPointerCapture(e.pointerId);}catch(_){}});
 canvas.addEventListener('pointermove',function(e){mx=e.clientX;my=e.clientY;if(dragging){var dx=e.clientX-lx,dy=e.clientY-ly;lx=e.clientX;ly=e.clientY;moved+=Math.abs(dx)+Math.abs(dy);theta-=dx*.006;phi=Math.max(.3,Math.min(1.46,phi-dy*.005));}else mouseDirty=true;});
-canvas.addEventListener('pointerup',function(e){dragging=false;canvas.style.cursor='grab';if(moved<7&&started){var b=pickB(e.clientX,e.clientY);if(b){if(b.deal.stage<3)b.deal.seller=YOU;closeDeal(b);}}});
+canvas.addEventListener('pointerup',function(e){dragging=false;canvas.style.cursor='grab';if(moved<7&&started){var b=pickB(e.clientX,e.clientY);if(b){if(b.deal.stage<3&&!PRESENT)b.deal.seller=YOU;closeDeal(b);}}});
 canvas.addEventListener('pointercancel',function(){dragging=false;});
 canvas.addEventListener('pointerleave',function(){showTip(null);});
 canvas.addEventListener('wheel',function(e){e.preventDefault();radius=Math.max(55,Math.min(260,radius+e.deltaY*.08));},{passive:false});
@@ -346,16 +359,37 @@ $('rush').addEventListener('click',function(){audio();rush();});
 $('snd').addEventListener('click',function(){audio();soundOn=!soundOn;$('snd').textContent=soundOn?'🔊':'🔇';});
 window.addEventListener('keydown',function(e){if(/^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(e.target&&e.target.tagName||''))return;if(e.code==='Space'){e.preventDefault();audio();bell();}else if(e.key==='r'||e.key==='R'){audio();rush();}});
 
-/* ---------- Start screen, nickname (kept only in this browser session), QR for phones ---------- */
+/* ---------- Start screen: nickname (kept only in this browser session), budget, QR for phones ---------- */
+function calcBudget(){return Math.max(10000,Math.round(baseBudget*Math.pow(1.3,level-1)/1e3)*1e3);}
 function relabel(s){var old=s.ship.children[2];if(old){s.ship.remove(old);if(old.material.map)old.material.map.dispose();old.material.dispose();}
   var l=label(s.name,s.color);l.position.y=3.6;s.ship.add(l);}
+function newGame(){SELLERS.forEach(function(s){s.sum=0;s.deals=0;});quarterSold=0;totalDeals=0;feed=[];level=1;bossBase=1;budget=calcBudget();combo=0;
+  if(!bossAlive){bossAlive=true;boss.visible=true;celebrate=0;$('win').classList.remove('show');}
+  lvlStart=performance.now();hudDirty=true;}
+var baseUrl=location.href.split('#')[0].split('?')[0];
+var num=function(v){var n=parseInt(String(v).replace(/[^\d]/g,''),10);return isNaN(n)?null:n;};
+function playerUrl(){var q=[];if(baseBudget!==10e6)q.push('b='+baseBudget);if(!botsOn)q.push('bots=0');return baseUrl+(q.length?'?'+q.join('&'):'');}
+function applyBots(){$('rush').hidden=!botsOn;hudDirty=true;}
+function drawQR(){if(location.protocol.indexOf('http')!==0||!window.QRCode)return;var u=playerUrl();
+  try{$('qr').textContent='';new QRCode($('qr'),{text:u,width:124,height:124});$('joinUrl').textContent=u.replace(/^https?:\/\//,'');$('join').hidden=false;}catch(e){}}
+function showStart(){started=false;$('start').hidden=false;
+  if(PRESENT){$('budgetIn').value=baseBudget.toLocaleString('sv-SE');$('botsIn').checked=botsOn;$('budgetInfo').textContent='';}
+  else $('budgetInfo').textContent='Budget att slå: '+fmtM(baseBudget);}
 $('nick').value=savedNick;
+if(PRESENT){$('nickRow').hidden=true;$('budgetRow').hidden=false;$('bchips').hidden=false;$('botsRow').hidden=false;$('go').textContent='STARTA';$('setBudget').hidden=false;
+  $('startText').textContent='Presentationsvy. Sätt budgeten som alla ska slå och välj om botarna ska vara med. QR-koden och länken till spelarna får samma inställningar.';}
+else if(!botsOn)$('startText').textContent='Tryck på byggnaderna för att stänga affärer och skjuta ner budget-bossen. Inga botar hjälper till, allt hänger på dig.';
+$('bchips').addEventListener('click',function(e){var v=e.target&&e.target.getAttribute&&e.target.getAttribute('data-v');if(v)$('budgetIn').value=Number(v).toLocaleString('sv-SE');});
+$('setBudget').addEventListener('click',showStart);
 $('startForm').addEventListener('submit',function(e){e.preventDefault();audio();
-  var n=cleanNick($('nick').value)||'Du';if(n!==YOU.name){YOU.name=n;relabel(YOU);}
-  try{sessionStorage.setItem('nsc_nick',n==='Du'?'':n);}catch(err){}
-  $('nick').blur();$('start').hidden=true;started=true;lvlStart=performance.now();hudDirty=true;});
-if(location.protocol.indexOf('http')===0&&window.QRCode){var pageUrl=location.href.split('#')[0].split('?')[0];
-  try{new QRCode($('qr'),{text:pageUrl,width:124,height:124});$('joinUrl').textContent=pageUrl.replace(/^https?:\/\//,'');$('join').hidden=false;}catch(e){}}
+  if(PRESENT){var v=num($('budgetIn').value);
+    if(v===null||v<10000||v>1e9){$('budgetInfo').textContent='Skriv en budget mellan 10 000 och 1 000 000 000 kr.';return;}
+    baseBudget=v;botsOn=$('botsIn').checked;applyBots();drawQR();}
+  else{var n=cleanNick($('nick').value)||'Du';if(n!==YOU.name){YOU.name=n;relabel(YOU);}
+    try{sessionStorage.setItem('nsc_nick',n==='Du'?'':n);}catch(err){}}
+  if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+  newGame();$('start').hidden=true;started=true;});
+applyBots();newGame();showStart();drawQR();
 
 /* ---------- Loop ---------- */
 var last=performance.now(),t=0,SH=REDUCE?0:1;
@@ -363,7 +397,7 @@ function frame(now){
   requestAnimationFrame(frame);
   var dt=Math.min(.05,(now-last)/1000);last=now;t+=dt;
   if(rushT>0){rushT-=dt;if(rushT<=0){speed=1;$('rush').classList.remove('on');}}
-  if(bossAlive){if(started){simT+=dt*speed;simAcc+=dt*speed;while(simAcc>STEP){simAcc-=STEP;stepSim();}}}
+  if(bossAlive){if(started){simT+=dt*speed;if(botsOn){simAcc+=dt*speed;while(simAcc>STEP){simAcc-=STEP;stepSim();}}}}
   else{celebrate-=dt;fwAcc+=dt;if(fwAcc>.12){fwAcc=0;emit(rnd(-55,55),rnd(30,85),rnd(-55,55),pick(SELLERS).color,90,28);}if(celebrate<=0)nextLevel();}
 
   for(var i=0;i<B.length;i++){var b=B[i];b.h+=(b.targetH-b.h)*Math.min(1,dt*5);b.mesh.scale.y=b.h;b.tex.repeat.y=Math.max(.5,b.h/4);
@@ -377,7 +411,7 @@ function frame(now){
   coreMat.emissiveIntensity=.9+bossHit*3;bossGlowMat.opacity=.6+bossHit*.4;face.lookAt(camera.position);
 
   /* ships */
-  for(var s=0;s<SELLERS.length;s++){var S=SELLERS[s],o=S.orbit,a=t*o.sp*(speed>1?3:1)+o.off;
+  for(var s=0;s<SELLERS.length;s++){var S=SELLERS[s];S.ship.visible=botsOn||PRESENT||!!S.you;if(!S.ship.visible)continue;var o=S.orbit,a=t*o.sp*(speed>1?3:1)+o.off;
     S.ship.position.set(Math.cos(a)*o.r,o.y+Math.sin(t*1.3+s)*3,Math.sin(a)*o.r);vA.set(Math.cos(a+.06)*o.r,S.ship.position.y,Math.sin(a+.06)*o.r);S.ship.lookAt(vA);
     S.pulse=Math.max(0,S.pulse-dt*1.5);var gs=10+S.pulse*22;S.glow.scale.set(gs,gs,1);
     if(Math.random()<.5)emit(S.ship.position.x,S.ship.position.y,S.ship.position.z,S.color,1,1.5);}
