@@ -32,6 +32,8 @@ html,body{height:100%}
 #board li.you{color:var(--gold)}
 #start label.check{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--fg)}
 #start label.check input{width:22px;height:22px;padding:0;flex:none;accent-color:var(--gold)}
+#again{pointer-events:none;justify-self:center;font-size:18px;padding:16px 24px;background:var(--gold);border-color:var(--gold);color:var(--bg)}
+#win.show #again{pointer-events:auto}
 .binfo{font-family:var(--display);font-weight:700;color:var(--gold);font-size:15px}
 .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .chips button{font-family:var(--body);font-weight:600;letter-spacing:0;font-size:14px;padding:8px 12px;border-color:var(--line);box-shadow:none}
@@ -144,7 +146,7 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 <div id="toast"></div>
 <div id="combo"></div>
 <div id="tip" class="panel"></div>
-<div id="win"><div class="big">BUDGETEN KROSSAD!</div><div id="winSub"></div></div>
+<div id="win"><div class="big">BUDGETEN KROSSAD!</div><div id="winSub"></div><button id="again" type="button">NÄSTA RUNDA</button></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -336,7 +338,7 @@ function bossDie(){
   bossAlive=false;celebrate=7;boss.visible=false;shake=4;
   emit(boss.position.x,boss.position.y,boss.position.z,'#ff2e5b',700,70);emit(boss.position.x,boss.position.y,boss.position.z,'#ffd23d',500,50);
   var mvp=SELLERS.filter(function(s){return botsOn||PRESENT||s.you}).sort(function(a,b){return b.sum-a.sum})[0]||SELLERS[0];
-  $('winSub').textContent=quarterName().split(' · ')[0]+' klart på '+Math.round((performance.now()-lvlStart)/1000)+' s · '+fmtM(quarterSold)+' sålt · MVP: '+mvp.name;
+  var secs=Math.round((performance.now()-lvlStart)/1000);$('winSub').textContent=PRESENT?('Klart på '+secs+' s · '+fmtM(quarterSold)+' sålt · MVP: '+mvp.name):(YOU.name+' slog '+fmtM(budget)+' på '+secs+' s · '+YOU.deals+' egna affärer');
   $('win').classList.add('show');sfxWin();
 }
 function nextLevel(){lvlStart=performance.now();level++;budget=calcBudget();quarterSold=0;bossBase*=1.12;boss.visible=true;bossAlive=true;$('win').classList.remove('show');hudDirty=true;
@@ -381,6 +383,7 @@ if(PRESENT){$('nickRow').hidden=true;$('budgetRow').hidden=false;$('bchips').hid
 else if(!botsOn)$('startText').textContent='Tryck på byggnaderna för att stänga affärer och skjuta ner budget-bossen. Inga botar hjälper till, allt hänger på dig.';
 $('bchips').addEventListener('click',function(e){var v=e.target&&e.target.getAttribute&&e.target.getAttribute('data-v');if(v)$('budgetIn').value=Number(v).toLocaleString('sv-SE');});
 $('setBudget').addEventListener('click',showStart);
+$('again').addEventListener('click',function(){audio();if(PRESENT)showStart();else newGame();});
 $('startForm').addEventListener('submit',function(e){e.preventDefault();audio();
   if(PRESENT){var v=num($('budgetIn').value);
     if(v===null||v<10000||v>1e9){$('budgetInfo').textContent='Skriv en budget mellan 10 000 och 1 000 000 000 kr.';return;}
@@ -398,7 +401,7 @@ function frame(now){
   var dt=Math.min(.05,(now-last)/1000);last=now;t+=dt;
   if(rushT>0){rushT-=dt;if(rushT<=0){speed=1;$('rush').classList.remove('on');}}
   if(bossAlive){if(started){simT+=dt*speed;if(botsOn){simAcc+=dt*speed;while(simAcc>STEP){simAcc-=STEP;stepSim();}}}}
-  else{celebrate-=dt;fwAcc+=dt;if(fwAcc>.12){fwAcc=0;emit(rnd(-55,55),rnd(30,85),rnd(-55,55),pick(SELLERS).color,90,28);}if(celebrate<=0)nextLevel();}
+  else{celebrate-=dt;fwAcc+=dt;if(fwAcc>.12){fwAcc=0;emit(rnd(-55,55),rnd(30,85),rnd(-55,55),pick(SELLERS).color,90,28);}}
 
   for(var i=0;i<B.length;i++){var b=B[i];b.h+=(b.targetH-b.h)*Math.min(1,dt*5);b.mesh.scale.y=b.h;b.tex.repeat.y=Math.max(.5,b.h/4);
     if(b.deal.stage===3){b.beam.material.opacity=.15+.07*Math.sin(t*4+b.mesh.position.x);if(bossAlive&&simT-b.wonAt>30){b.deal=newDeal();applyStage(b);hudDirty=true;}}}
