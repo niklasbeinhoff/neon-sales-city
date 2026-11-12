@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="sv">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Neon Sales City – Spelare</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;600&display=swap">
+<style>
+:root{color-scheme:dark;--bg:#07021a;--panel:#140a2e;--line:rgba(255,61,242,.42);--fg:#f4ecff;--muted:#ab9fcc;--pink:#ff3df2;--cyan:#22e6ff;--gold:#ffd23d;--green:#2bff9a;--red:#ff2e5b;
+  --display:'Orbitron',ui-sans-serif,system-ui,sans-serif;--body:'Inter',ui-sans-serif,system-ui,-apple-system,sans-serif}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.4;min-height:100vh;
+  padding-block:calc(18px + env(safe-area-inset-top,0px)) calc(32px + env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:460px;margin:0 auto;display:grid;gap:16px}
+.brand{font-family:var(--display);font-weight:900;letter-spacing:.14em;font-size:14px;color:var(--cyan);text-shadow:0 0 12px var(--cyan)}
+h1{font-family:var(--display);font-size:24px;margin:0;display:flex;align-items:center;gap:10px;text-wrap:balance}
+h2{font-family:var(--display);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:10px}
+label{font-size:13px;color:var(--muted);display:grid;gap:4px}
+input{font:inherit;font-size:18px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;width:100%;min-width:0}
+input:focus-visible,button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+button{font-family:var(--display);font-weight:700;letter-spacing:.06em;font-size:15px;color:var(--fg);background:var(--bg);border:1px solid var(--cyan);border-radius:10px;padding:13px 14px;cursor:pointer}
+button:active{transform:scale(.97)}
+button.big{font-size:20px;padding:18px;background:var(--gold);border-color:var(--gold);color:var(--bg);box-shadow:0 0 24px rgba(255,210,61,.45)}
+button:disabled{opacity:.5}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{font-family:var(--body);font-weight:600;font-size:14px;padding:8px 12px;border-color:var(--line);letter-spacing:0}
+.row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
+.dot{width:16px;height:16px;border-radius:50%;display:inline-block;flex:none}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.stats div{background:var(--bg);border-radius:8px;padding:10px 4px}
+.stats b{display:block;font-family:var(--display);font-size:16px;color:var(--green);font-variant-numeric:tabular-nums}
+.stats span{font-size:11px;color:var(--muted)}
+#msg{min-height:22px;font-weight:600;text-align:center}
+#msg.ok{color:var(--green)}#msg.err{color:var(--red)}
+ol{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+li{display:grid;grid-template-columns:22px 14px 1fr auto;gap:8px;align-items:center;font-size:15px;font-variant-numeric:tabular-nums}
+li .dot{width:12px;height:12px}
+li.me{font-weight:600;color:var(--gold)}
+.rk{color:var(--muted);font-family:var(--display);font-size:12px}
+.muted{color:var(--muted);font-size:13px}
+</style>
+
+<main>
+  <div class="brand">NEON SALES CITY</div>
+
+  <section id="joinView" class="panel">
+    <h1>Gå med i spelet</h1>
+    <p class="muted" style="margin:0">Skriv ditt namn, så får du ett eget skepp på storskärmen.</p>
+    <form id="joinForm" class="panel" style="border:0;padding:0">
+      <label for="name">Ditt namn
+        <input id="name" name="name" maxlength="16" autocomplete="given-name" required>
+      </label>
+      <button class="big" type="submit">GÅ MED</button>
+    </form>
+    <div id="joinMsg" class="muted" role="status"></div>
+  </section>
+
+  <section id="gameView" hidden style="display:grid;gap:16px">
+    <h1><span class="dot" id="myDot"></span><span id="hello"></span></h1>
+
+    <div class="stats">
+      <div><b id="sSum">0</b><span>sålt</span></div>
+      <div><b id="sDeals">0</b><span>affärer</span></div>
+      <div><b id="sPct">–</b><span>av budget</span></div>
+    </div>
+
+    <form id="dealForm" class="panel">
+      <h2>Stäng en affär</h2>
+      <label for="company">Kund
+        <input id="company" name="company" maxlength="30" placeholder="t.ex. Lingon Bageri" autocomplete="off">
+      </label>
+      <label for="amount">Belopp i kronor
+        <input id="amount" name="amount" inputmode="numeric" placeholder="250 000" autocomplete="off" required>
+      </label>
+      <div class="chips" id="chips">
+        <button type="button" data-v="50000">50 000</button>
+        <button type="button" data-v="150000">150 000</button>
+        <button type="button" data-v="300000">300 000</button>
+        <button type="button" data-v="500000">500 000</button>
+        <button type="button" data-v="1000000">1 000 000</button>
+      </div>
+      <button class="big" type="submit" id="dealBtn">🔔 STÄNG AFFÄR</button>
+      <div id="msg" role="status"></div>
+    </form>
+
+    <form id="budgetForm" class="panel">
+      <h2>Min budget</h2>
+      <div class="row">
+        <label for="budget">Budget i kronor
+          <input id="budget" name="budget" inputmode="numeric" placeholder="2 000 000" autocomplete="off" required>
+        </label>
+        <button type="submit">SPARA</button>
+      </div>
+      <div class="muted">Allas budgetar läggs ihop och blir bossens liv på storskärmen.</div>
+      <div id="budgetMsg" class="muted" role="status"></div>
+    </form>
+
+    <section class="panel">
+      <h2>Topplista</h2>
+      <ol id="board"></ol>
+    </section>
+
+    <a href="/" style="color:var(--cyan);text-align:center">Visa staden på den här skärmen</a>
+    <button type="button" id="leave">Byt spelare</button>
+  </section>
+</main>
+
+<script>
+(function(){
+'use strict';
+var $=function(id){return document.getElementById(id)};
+var fmt=function(n){return Math.round(n).toLocaleString('sv-SE')+' kr'};
+var num=function(v){var n=parseInt(String(v).replace(/[^\d]/g,''),10);return isNaN(n)?null:n};
+var me=null;
+try{me=JSON.parse(localStorage.getItem('nsc_me')||'null');}catch(e){}
+function save(){try{if(me)localStorage.setItem('nsc_me',JSON.stringify(me));else localStorage.removeItem('nsc_me');}catch(e){}}
+function post(path,body){return fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+  .then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||'Något gick fel');return d;});});}
+function say(el,text,cls){el.textContent=text;el.className=cls||'muted';}
+
+function show(){
+  $('joinView').hidden=!!me;$('gameView').hidden=!me;
+  if(!me)return;
+  $('hello').textContent='Hej '+me.name+'!';$('myDot').style.background=me.color;
+  stats(me);refresh();
+}
+function stats(p){
+  $('sSum').textContent=p.sum>=1e6?(p.sum/1e6).toLocaleString('sv-SE',{maximumFractionDigits:1})+' Mkr':Math.round(p.sum/1000)+' tkr';
+  $('sDeals').textContent=p.deals;
+  $('sPct').textContent=p.budget>0?Math.round(p.sum/p.budget*100)+' %':'–';
+  if(p.budget>0&&document.activeElement!==$('budget'))$('budget').value=p.budget.toLocaleString('sv-SE');
+}
+function logout(text){me=null;save();show();if(text)say($('joinMsg'),text);}
+
+$('joinForm').addEventListener('submit',function(e){e.preventDefault();
+  post('/api/join',{name:$('name').value}).then(function(d){me=d;save();say($('joinMsg'),'');show();})
+  .catch(function(err){say($('joinMsg'),err.message,'err');});});
+
+$('chips').addEventListener('click',function(e){var v=e.target&&e.target.getAttribute('data-v');if(v){$('amount').value=Number(v).toLocaleString('sv-SE');}});
+
+$('dealForm').addEventListener('submit',function(e){e.preventDefault();
+  var v=num($('amount').value);if(v===null){say($('msg'),'Skriv ett belopp i kronor','err');return;}
+  var btn=$('dealBtn');btn.disabled=true;
+  post('/api/deal',{id:me.id,company:$('company').value,value:v}).then(function(d){
+    me.sum=d.sum;me.deals=d.deals;stats(d);say($('msg'),'💥 Affär stängd: +'+fmt(v),'ok');$('company').value='';
+    if(navigator.vibrate)navigator.vibrate(60);refresh();
+  }).catch(function(err){if(/igen/.test(err.message))logout(err.message);else say($('msg'),err.message,'err');})
+  .then(function(){setTimeout(function(){btn.disabled=false;},500);});});
+
+$('budgetForm').addEventListener('submit',function(e){e.preventDefault();
+  var v=num($('budget').value);if(v===null){say($('budgetMsg'),'Skriv en budget i kronor','err');return;}
+  post('/api/budget',{id:me.id,value:v}).then(function(d){me.budget=d.budget;stats(d);say($('budgetMsg'),'Budget sparad: '+fmt(v),'ok');$('budget').blur();})
+  .catch(function(err){say($('budgetMsg'),err.message,'err');});});
+
+$('leave').addEventListener('click',function(){logout('');});
+
+function refresh(){
+  if(!me)return;
+  fetch('/api/state').then(function(r){return r.json()}).then(function(d){
+    if(!me)return;
+    if(d.epoch!==me.epoch){logout('Spelet har startats om. Gå med igen.');return;}
+    var board=$('board');board.textContent='';var found=false;
+    d.players.slice(0,10).forEach(function(p,i){
+      var li=document.createElement('li');if(p.id===me.id)li.className='me';
+      var rk=document.createElement('span');rk.className='rk';rk.textContent=i+1;
+      var dot=document.createElement('span');dot.className='dot';dot.style.background=p.color;
+      var nm=document.createElement('span');nm.textContent=p.name;
+      var sm=document.createElement('span');sm.textContent=fmt(p.sum);
+      li.appendChild(rk);li.appendChild(dot);li.appendChild(nm);li.appendChild(sm);board.appendChild(li);});
+    d.players.forEach(function(p){if(p.id===me.id){found=true;me.sum=p.sum;me.deals=p.deals;me.budget=p.budget;stats(p);}});
+    if(!found)logout('Gå med i spelet igen.');
+  }).catch(function(){});
+}
+setInterval(refresh,2500);
+show();
+})();
+</script>
